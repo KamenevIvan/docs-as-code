@@ -1,0 +1,179 @@
+openapi: 3.0.3
+
+info:
+  title: AI ChatBot API
+  description: API для работы с ИИ-помощником интернет магазина
+  version: 1.0.0
+
+servers:
+  - url: https://example.com/api/v1
+
+# POST /question
+# GET /question_status/ {id}
+# GET /store_politics
+
+paths:
+  /question:
+    post:
+      summary: Отправить вопрос 
+      description: Отправляет вопрс клиента на сервер для обработки LLM.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+                - user_id
+              properties:
+                text:
+                  type: string
+                  example: "Помоги выбрать чайник до 5 тыс. рублей с умными функциями"
+                user_id:
+                  type: integer 
+                  example: 111111  #Нужно для подтягивания истории общения с конкретным пользователем
+      responses:
+        '202':
+          description: Задача принята в обработку. Возвращается id запроса на сервере для последующего отслеживания статуса запроса
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 12121212 # Возвращается идентификатор запроса, по которому можно проверить текущий статус запроса  
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: EMPTY_TEXT
+                  message:
+                    type: string
+                    example: Request must not be empty
+        '422':
+          description: Некорректный ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: INVALID_ID
+                  message:
+                    type: string
+                    example: invalid user id
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailableError'
+                    
+#==================================================================================
+  /question_status/{id}:
+    get:
+      summary: Получить статус обработки вопроса
+      description: Возвращает статус обработки вопроса пользователя и, если готово, ответ.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Идентификатор запроса пользователя, получаемый из POST /question
+          schema:
+            type: integer
+            example: 12121212
+      responses:
+        '200':
+          description: Статус задачи
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id:
+                    type: integer
+                    example: 12121212 
+                  status:
+                    type: string
+                    enum: [PENDING, RUNNING, SUCCEEDED, FAILED]
+                  result:
+                    type: string
+                    description: Ответ пользователю. Заполняется только при status = SUCCEEDED
+                    example: Вам могут подойти "Чайник 1" {ссылка на чайник 1} и "Чайник 2" {ссылка на чайник 2}
+        '404':
+          description: Задача с таким id не найдена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: OPERATION_NOT_FOUND
+                  message:
+                    type: string
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailableError'
+#===================================================================================
+  /store_politics:
+    get:
+      summary: Получить список актуальных политик магазина
+      description: Возвращает список актуальных политик магазина по оплате, гарантии, доставке, возврату.
+      responses:
+        '200':
+          description: Списисок политик
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    type: string
+                    example: "Текущий список политик магазина регулируется федеральными законами о торговле..."
+        '500':
+          description: Список политик недоступен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: INTERNAL_SERVER_ERROR
+                  message:
+                    type: string
+                    example: "На данный момент список актуальных политик недоступен. Попробуйте позже."
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailableError'
+
+components:
+  schemas:
+    ServiceUnavailableError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [SERVICE_UNAVAILABLE]
+        message:
+          type: string
+          example: Сервис временно недоступен, попробуйте позже
+
