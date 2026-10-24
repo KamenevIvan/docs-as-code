@@ -30,13 +30,22 @@ paths:
               properties:
                 text:
                   type: string
+                  minLength: 1
                   example: "Помоги выбрать чайник до 5 тыс. рублей с умными функциями"
                 user_id:
                   type: integer 
+                  minimum: 1
                   example: 111111  #Нужно для подтягивания истории общения с конкретным пользователем
       responses:
         '202':
           description: Задача принята в обработку. Возвращается id запроса на сервере для последующего отслеживания статуса запроса
+          headers:                                
+            Location:
+              description: Ссылка для проверки статуса обработки вопроса
+              schema:
+                type: string
+                format: uri                          
+                example: /api/v1/question_status/12121212
           content:
             application/json:
               schema:
@@ -50,27 +59,19 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  code:
-                    type: string
-                    example: EMPTY_TEXT
-                  message:
-                    type: string
-                    example: Request must not be empty
+                $ref: '#/components/schemas/Error'
+              example:                              
+                code: EMPTY_TEXT
+                message: Request must not be empty
         '422':
           description: Некорректный ID
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  code:
-                    type: string
-                    example: INVALID_ID
-                  message:
-                    type: string
-                    example: invalid user id
+                $ref: '#/components/schemas/Error'  
+              example:                              
+                code: INVALID_ID
+                message: invalid user id
         '503':
           description: Сервис временно недоступен
           content:
@@ -115,13 +116,10 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  code:
-                    type: string
-                    example: OPERATION_NOT_FOUND
-                  message:
-                    type: string
+                $ref: '#/components/schemas/Error'
+              example:
+                code: OPERATION_NOT_FOUND
+                message: Task with this ID not found
         '503':
           description: Сервис временно недоступен
           content:
@@ -144,28 +142,43 @@ paths:
                   text:
                     type: string
                     example: "Текущий список политик магазина регулируется федеральными законами о торговле..."
+        '404':
+          description: Политики магазина еще не добавлены 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: POLICIES_NOT_FOUND
+                message: Список политик магазина не сформирован.
         '500':
           description: Список политик недоступен
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  code:
-                    type: string
-                    example: INTERNAL_SERVER_ERROR
-                  message:
-                    type: string
-                    example: "На данный момент список актуальных политик недоступен. Попробуйте позже."
+                $ref: '#/components/schemas/Error'
+              example:
+                code: INTERNAL_SERVER_ERROR
+                message: На данный момент список актуальных политик недоступен. Попробуйте позже.
         '503':
           description: Сервис временно недоступен
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServiceUnavailableError'
-
+#=========================================================================================
 components:
   schemas:
+    Error:                      
+      type: object
+      required: [code, message] 
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки
+        message:
+          type: string
+          description: Человекочитаемое описание ошибки
     ServiceUnavailableError:
       type: object
       required: [code, message]
